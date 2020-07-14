@@ -1,7 +1,7 @@
 ## SECTION 1 : PRS-PM-ISY5002-GROUP5
 ## Pattern Recognition Systems
 
-<img src="SystemCode/static/pattern-recognition.jpeg"
+<img src="Static/pattern-recognition.jpeg"
      style="float: left; margin-right: 0px;" />
 
 ---  
