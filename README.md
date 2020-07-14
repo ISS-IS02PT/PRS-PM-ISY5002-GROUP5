@@ -46,7 +46,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 
 ---
 ## SECTION 7 : MISCELLANEOUS
-`Please refer to the Jupyter Notebook 'Food_Data_EDA.ipynb' for data analysis at Github Folder: Miscellaneous`
+`Please refer to more information at Github Folder: Miscellaneous`
 
 
 `<File Link>` : <https://github.com/ISS-IS02PT/PRS-PM-ISY5002-GROUP5/tree/master/Miscellaneous>

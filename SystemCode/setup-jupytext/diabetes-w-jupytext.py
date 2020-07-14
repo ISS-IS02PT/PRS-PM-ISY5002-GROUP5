@@ -20,9 +20,6 @@
 # %pip install pandas
 # %pip install matplotlib
 
-# abc
-# This is a comment
-
 # %%
 import numpy as np
 import pandas as pd
