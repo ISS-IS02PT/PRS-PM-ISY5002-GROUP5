@@ -46,7 +46,7 @@ for col in df.columns:
 
 features_info = pd.DataFrame(info, columns = ['colName','non-null values', 'unique', 'dtype'])
 display(features_info)
-features_info.to_csv('Info_List.csv')
+#features_info.to_csv('Info_List.csv')
 # -
 
 # ### Feature Engineering
