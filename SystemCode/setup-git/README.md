@@ -105,7 +105,23 @@ $ git commit -m '<<Commit message here>>'
 ```bash
 # Merge local branch into 'develop' branch
 $ git checkout develop
-$ git merge ken.ldk
+$ git merge --no-ff --no-commit ken.ldk
+
+# Make a new merged commit from 'develop' branch
+$ git commit -m '<<Commit message here>>'
+```
+
+```bash
+# This is the visualization of what we have just done with merging local branch using the steps above
+$ git log --graph --oneline --decorate
+
+*   c792429 (HEAD -> develop) test
+|\  
+| * 8f1b4db (ken.ldk) test 2
+| * c33ba60 test
+|/  
+* fa0ed32 (origin/develop) Update setup-git/static
+* ...
 ```
 
 ```bash
