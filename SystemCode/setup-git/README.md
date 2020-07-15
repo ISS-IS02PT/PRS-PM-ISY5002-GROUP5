@@ -91,22 +91,49 @@ Switched to a new branch 'develop'
 $ git checkout -b ken.ldk
 Switched to a new branch 'ken.ldk'
 ```
+* Click branch dropdown -> "New branch"
+<div style="text-align: left"><img src="static/Git-Desktop-1a.png"></div>
+
+* Type name of branch into "Name" textbox and click "Create branch"
+<div style="text-align: left"><img src="static/Git-Desktop-2a.png"></div>
 
 ```bash
 # Save the changes to the local git in your branch
 $ git add .
 ```
+* Select "Bring my changes to \<branch name\>"
+* Click "Switch branch"
+<div style="text-align: left"><img src="static/Git-Desktop-3a.png"></div>
+
+* Select \<branch name\> at the branch dropdown
+<div style="text-align: left"><img src="static/Git-Desktop-5a.png"></div>
+<div style="text-align: left"><img src="static/Git-Desktop-4a.png"></div>
 
 ```bash
 # Commit the changes to local branch
 $ git commit -m '<<Commit message here>>'
 ```
+* Type commit message title and description
+* Click "Commit to \<branch name\>"
+<div style="text-align: left"><img src="static/Git-Desktop-7a.png"></div>
+
+* Click "Push origin"
+<div style="text-align: left"><img src="static/Git-Desktop-8a.png"></div>
 
 ```bash
 # Merge local branch into 'develop' branch
 $ git checkout develop
 $ git merge ken.ldk
 ```
+* Select "develop" branch from branch dropdown
+<div style="text-align: left"><img src="static/Git-Desktop-6a.png"></div>
+
+* At top menu bar, click "Branch" -> "Merge into current branch"
+<div style="text-align: left"><img src="static/Git-Desktop-10a.png"></div>
+
+* At pop up window, select "\<branch name\>" to merge change from
+* Click "Merge \<branch name\> into develop"
+<div style="text-align: left"><img src="static/Git-Desktop-11a.png"></div>
 
 ```bash
 # (Optional) When you are on 'develop' branch
@@ -116,8 +143,12 @@ $ git branch -d ken.ldk
 # If you want to delete + discard changes on local branch
 $ git branch -D ken.ldk
 ```
+* At top menu bar, click "Branch" -> "Delete"
+<div style="text-align: left"><img src="static/Git-Desktop-13.png"></div>
 
 ```bash
 # Push this new update back to origin's 'develop' branch, you may be prompted for the password of the ssh private key passphrase if you set it earlier
 $ git push origin develop
 ```
+* Click "Push origin" while in "develop" branch
+<div style="text-align: left"><img src="static/Git-Desktop-12a.png"></div>
