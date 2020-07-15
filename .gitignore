@@ -76,7 +76,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-.ipynb
+*.ipynb
 
 # IPython
 profile_default/
@@ -131,3 +131,4 @@ dmypy.json
 
 # Data folder
 data/
+
