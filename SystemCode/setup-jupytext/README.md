@@ -1,8 +1,11 @@
 ## 1. Run the following commands from the Venv Python / Conda environment of Jupyter notebook
 
 ```bash
+# Activate the notebook/jupyterlab environment
+$ source <<location of your virtualenv>>/bin/activate
+
 # Install jupytext from pip
-$ pip install jupytext
+(sandbox) $ pip install jupytext
 ```
 or
 ```bash
@@ -19,7 +22,7 @@ to your .jupyter/jupyter_notebook_config.py file (generate a Jupyter config, if 
 
 ## 3. Run a build step
 ```bash
-$ jupyter lab build
+(sandbox) $ jupyter lab build
 ```
 
 ## 4. Pair the notebook
