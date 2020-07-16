@@ -76,7 +76,8 @@ origin  git@github.com:ISS-IS02PT/PRS-PM-ISY5002-GROUP5.git (push)
 ```
 
 ## 4. Using git
-- We will be commiting to 'Develop' branch only
+- Work on local branch for experiments, random code
+- We will be commiting to 'Develop' branch only, when you have a good result, and organized code
 - Merging to 'Master' branch will be done via Pull Request
 
 ```bash
@@ -100,11 +101,19 @@ $ git add .
 ```bash
 # Commit the changes to local branch
 $ git commit -m '<<Commit message here>>'
+
+# Backup to centralized git
+$ git push origin ken.ldk
 ```
 
+You may continue to experiment/refine your code on the local branch. Don't commit back to 'develop' yet.
+
+## 5. Sharing your ready work back to 'develop' branch, when you have organized your code, ready for other to use
 ```bash
-# Merge local branch into 'develop' branch
+# When you are ready to merge local branch into 'develop' branch.
 $ git checkout develop
+
+# No-Fast-forward No-Commit
 $ git merge --no-ff --no-commit ken.ldk
 
 # Make a new merged commit from 'develop' branch
