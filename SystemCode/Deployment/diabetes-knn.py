@@ -174,7 +174,7 @@ with open('./diabetes-knn-model.pkl', 'wb') as model_pkl:
   pickle.dump(knn, model_pkl)
 
 # +
-#### Export the scaler and model ####
+#### Import the scaler and model ####
 
 import pickle
 
