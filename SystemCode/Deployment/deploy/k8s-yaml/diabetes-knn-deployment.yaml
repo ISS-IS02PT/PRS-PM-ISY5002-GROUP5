@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: diabetes-knn-deployment
+  name: diabetes-knn-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: diabetes-knn-deployment
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: diabetes-knn-deployment
+    spec:
+      containers:
+      - image: asia.gcr.io/my-spark-iss/diabetes-knn:develop-1.0
+        name: diabetes-knn

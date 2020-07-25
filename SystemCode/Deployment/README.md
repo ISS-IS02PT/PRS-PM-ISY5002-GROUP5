@@ -70,11 +70,42 @@ $ docker build -t ldkhang/diabetes-knn-1.0 .
 
 $ docker run -p 8000:80 ldkhang/diabetes-knn-1.0
 
+$ curl -X POST    localhost:8000/predict    -H 'Content-Type: application/json'    -d '[1, 85, 66, 29, 0, 26.6, 0.351, 31]'
+```
+
+# Deploy in Cloud Run
+```code
+$ docker build -t asia.gcr.io/my-spark-iss/diabetes-knn:develop-1.0 .
+
+$ docker push asia.gcr.io/my-spark-iss/diabetes-knn:develop-1.0
+```
+
+Enable Cloud Run + Create the service with the container image above
+
+```code
+$ curl -X POST    https://diabetes-knn-svc-ehnokkrnja-s.a.run.app/predict    -H 'Content-Type: application/json'    -d '[1, 85, 66, 29, 0, 26.6, 0.351, 31]'
+
+```
+
+# Deploy in K8S
+## 1. Deploy in local K8S - Docker Desktop community
+```code
+$ kubectl cluster-info
+Kubernetes master is running at https://kubernetes.docker.internal:6443
+
+$ kubectl create -f k8s-yaml/
+
+$ kubectl get deployment
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+diabetes-knn-deployment   1/1     1            1           33s
+
+$ kubectl get services
+NAME               TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+diabetes-knn-svc   NodePort    10.109.88.45   <none>        80:31313/TCP   44s
+
+$ curl -X POST    http://kubernetes.docker.internal:31313/predict    -H 'Content-Type: application/json'    -d '[1, 85, 66, 29, 0, 26.6, 0.351, 31]'
 ```
 
 
-
-
-# Deploy in Cloud Run
-
+## 2. Deploy in GKE
 # CI/CD
