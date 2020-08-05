@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -P Hello
+#PBS -j oe
+#PBS -N HelloJob
+#PBS -q parallel8
+#PBS -l select=1:ncpus=8:mem=24gb
+#PBS -l walltime=00:24:00
+
+cd $PBS_O_WORKDIR;
+np=$(cat ${PBS_NODEFILE} | wc -l);
+
+source /etc/profile.d/rec_modules.sh
+
+module load miniconda
+bash
+. ~/.bashrc
+
+conda activate sandbox
+python hello.py
