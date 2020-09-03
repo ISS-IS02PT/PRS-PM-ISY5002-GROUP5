@@ -83,7 +83,7 @@ $ docker push asia.gcr.io/my-spark-iss/diabetes-knn:develop-1.0
 Enable Cloud Run + Create the service with the container image above
 
 ```code
-$ curl -X POST    https://diabetes-knn-svc-ehnokkrnja-s.a.run.app/predict    -H 'Content-Type: application/json'    -d '[1, 85, 66, 29, 0, 26.6, 0.351, 31]'
+$ curl -X POST    https://diabetes-knn-svc-ehnokkrnja-as.a.run.app/predict    -H 'Content-Type: application/json'    -d '[1, 85, 66, 29, 0, 26.6, 0.351, 31]'
 
 ```
 
