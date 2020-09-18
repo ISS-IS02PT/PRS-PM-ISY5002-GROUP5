@@ -323,34 +323,115 @@ print("Accuracy on training set: {:.3f}".format(mlp_enhanced.score(X_train, y_tr
 print("Accuracy on test set: {:.3f}".format(mlp_enhanced.score(X_test, y_test)))
 # -
 
-# ## SVM
+# ## With SMOTE (Synthetic Minority Over Sampling Technique)
+
+import imblearn
+from imblearn.over_sampling import SMOTE
+sm = SMOTE(random_state=55)
+X_train_rspl, y_train_rspl = sm.fit_sample (X_train,y_train)
+
+
+print('X_train.shape is ', X_train.shape)
+print('X_train_rspl.shape is ', X_train_rspl.shape)
+print('X_test.shape is ', X_test.shape)
+print('y_train.shape is ', y_train.shape)
+print('y_train_rspl.shape is ', y_train_rspl.shape)
+print('y_test.shape is ', y_test.shape)
+
+
+unique, count = np.unique(y_train, return_counts=True)
+y_train_dict_value_count = {k:v for (k,v) in zip(unique,count)}
+y_train_dict_value_count
+
+unique, count = np.unique(y_train_rspl, return_counts=True)
+y_train_smote_value_count = {k:v for (k,v) in zip(unique,count)}
+y_train_smote_value_count
+
+unique, count = np.unique(y_test, return_counts=True)
+y_test_dict_value_count = {k:v for (k,v) in zip(unique,count)}
+y_test_dict_value_count
+
+# ### NN with SMOTE
 
 # +
-from sklearn.svm import SVC
-
-gamma1, gamma2 = 0.1, 1
-C1, C2 = 1, 10
-hyperparams = (gamma1, C1), (gamma1, C2), (gamma2, C1), (gamma2, C2)
-
 scaler = StandardScaler()  
-scaler.fit(X_train)
-X_train = scaler.transform(X_train)  
-X_test = scaler.transform(X_test) 
+scaler.fit(X_train_rspl)
 
-svm_clfs = []
-for gamma, C in hyperparams:
-    svm_clf=SVC(kernel="rbf",gamma=gamma, C=C) 
-    svm_clf.fit(X_train,y_train)
-    svm_clfs.append(svm_clf)
-
-from sklearn.metrics import classification_report, confusion_matrix  
-for i, svm_clf in enumerate(svm_clfs):
-    predictions = svm_clf.predict(X_test)  
-    gamma, C = hyperparams[i]
-    print("r=", gamma, "C=", C)
-    print("Accuracy=", metrics.accuracy_score(y_test, predictions))
-    print(confusion_matrix(y_test,predictions))  
-    print(classification_report(y_test,predictions))  
+X_train_rspl = scaler.transform(X_train_rspl)  
+X_test = scaler.transform(X_test)  
 # -
+
+from sklearn.neural_network import MLPClassifier  
+mlp_enhanced = MLPClassifier(hidden_layer_sizes=(32,32), max_iter=1000,verbose=2)  
+mlp_enhanced.fit(X_train_rspl, y_train_rspl)  
+
+# +
+#from sklearn.metrics import classification_report, confusion_matrix 
+predictions = mlp_enhanced.predict(X_test)  
+
+print("Accuracy for the enhanced model: ", metrics.accuracy_score(y_test, predictions))
+print(confusion_matrix(y_test,predictions))  
+print(classification_report(y_test,predictions))  
+
+print("Accuracy on training set: {:.3f}".format(mlp_enhanced.score(X_train_rspl, y_train_rspl)))
+print("Accuracy on test set: {:.3f}".format(mlp_enhanced.score(X_test, y_test)))
+# -
+
+# ### Decision Tree with SMOTE
+
+from sklearn.tree import DecisionTreeClassifier
+dt = DecisionTreeClassifier(criterion='entropy',random_state=0)
+dt.fit(X_train_rspl, y_train_rspl)
+print("Accuracy on training set: {:.3f}".format(dt.score(X_train_rspl, y_train_rspl)))
+print("Accuracy on test set: {:.3f}".format(dt.score(X_test, y_test)))
+
+y_pred = dt.predict(X_test)
+
+# +
+from sklearn.metrics import classification_report, confusion_matrix  
+
+print(confusion_matrix(y_test, y_pred))  
+print(classification_report(y_test, y_pred)) 
+# -
+# ## Logistic Regression with SMOTE and tuned ratio
+
+from sklearn.linear_model import LogisticRegression
+logreg = LogisticRegression(C=0.01).fit(X_train_rspl, y_train_rspl)
+print("Training set score: {:.3f}".format(logreg.score(X_train_rspl, y_train_rspl)))
+print("Test set score: {:.3f}".format(logreg.score(X_test, y_test)))
+
+y_pred = logreg.predict(X_test)
+print(confusion_matrix(y_test, y_pred))  
+print(classification_report(y_test, y_pred)) 
+
+# +
+# this is to search for the best ratio to be applied to SMOTE for better result
+from sklearn.model_selection import GridSearchCV
+from imblearn.pipeline import make_pipeline
+from sklearn.linear_model import LogisticRegression
+
+pipe = make_pipeline(
+    SMOTE(),
+    LogisticRegression()
+)
+
+weights = np.linspace(0.005, 0.25, 10)
+
+gsc = GridSearchCV(
+    estimator=pipe,
+    param_grid={
+        'sampling_strategy': weights
+    },
+    scoring='f1',
+    cv=3
+)
+grid_result = gsc.fit(X_train_rspl, y_train_rspl)
+
+print("Best parameters : %s" % grid_result.best_params_)
+weight_f1_score_df = pd.DataFrame({ 'score': grid_result.cv_results_['mean_test_score'],
+                                   'weight': weights })
+weight_f1_score_df.plot(x='weight')
+# -
+
 
 
