@@ -325,17 +325,27 @@ print("Accuracy on test set: {:.3f}".format(mlp_enhanced.score(X_test, y_test)))
 
 # ## With SMOTE (Synthetic Minority Over Sampling Technique)
 
+# Created 2 instances of smote here
+# sm = normal smote with default sampling strategy = 1.0 -> this will create synthetic data for minority class such that the
+#   number of samples for minority class equals with samples for majority class
+# sm_ss = smote with sampling strategy = 0.1  -> this will create synthetic data for minority class such that the 
+#   number of samples for minority class = 0.1 or 10% of the number of samples from majority class
 import imblearn
 from imblearn.over_sampling import SMOTE
 sm = SMOTE(random_state=55)
+sm_ss = SMOTE(random_state=55,sampling_strategy=0.1)
 X_train_rspl, y_train_rspl = sm.fit_sample (X_train,y_train)
+X_train_rspl_ss, y_train_rspl_ss = sm_ss.fit_sample (X_train,y_train)
+print(imblearn.__version__)
 
 
 print('X_train.shape is ', X_train.shape)
 print('X_train_rspl.shape is ', X_train_rspl.shape)
+print('X_train_rspl_ss.shape is ', X_train_rspl_ss.shape)
 print('X_test.shape is ', X_test.shape)
 print('y_train.shape is ', y_train.shape)
 print('y_train_rspl.shape is ', y_train_rspl.shape)
+print('y_train_rspl_ss.shape is ', y_train_rspl_ss.shape)
 print('y_test.shape is ', y_test.shape)
 
 
@@ -346,6 +356,10 @@ y_train_dict_value_count
 unique, count = np.unique(y_train_rspl, return_counts=True)
 y_train_smote_value_count = {k:v for (k,v) in zip(unique,count)}
 y_train_smote_value_count
+
+unique, count = np.unique(y_train_rspl_ss, return_counts=True)
+y_train_smote_ss_value_count = {k:v for (k,v) in zip(unique,count)}
+y_train_smote_ss_value_count
 
 unique, count = np.unique(y_test, return_counts=True)
 y_test_dict_value_count = {k:v for (k,v) in zip(unique,count)}
@@ -365,47 +379,96 @@ from sklearn.neural_network import MLPClassifier
 mlp_enhanced = MLPClassifier(hidden_layer_sizes=(32,32), max_iter=1000,verbose=2)  
 mlp_enhanced.fit(X_train_rspl, y_train_rspl)  
 
+from sklearn.neural_network import MLPClassifier  
+mlp_enhanced_ss = MLPClassifier(hidden_layer_sizes=(32,32), max_iter=1000,verbose=2)  
+mlp_enhanced_ss.fit(X_train_rspl_ss, y_train_rspl_ss)  
+
 # +
+# SMOTE with default sampling strategy = 1.0
 #from sklearn.metrics import classification_report, confusion_matrix 
 predictions = mlp_enhanced.predict(X_test)  
 
-print("Accuracy for the enhanced model: ", metrics.accuracy_score(y_test, predictions))
+print("Accuracy for the NN with smote default sampling_strategy 1.0: ", metrics.accuracy_score(y_test, predictions))
 print(confusion_matrix(y_test,predictions))  
 print(classification_report(y_test,predictions))  
 
 print("Accuracy on training set: {:.3f}".format(mlp_enhanced.score(X_train_rspl, y_train_rspl)))
 print("Accuracy on test set: {:.3f}".format(mlp_enhanced.score(X_test, y_test)))
+
+# +
+# SMOTE with sampling strategy = 0.1
+#from sklearn.metrics import classification_report, confusion_matrix 
+predictions = mlp_enhanced_ss.predict(X_test)  
+
+print("Accuracy for the enhanced model: ", metrics.accuracy_score(y_test, predictions))
+print(confusion_matrix(y_test,predictions))  
+print(classification_report(y_test,predictions))  
+
+print("Accuracy on training set: {:.3f}".format(mlp_enhanced.score(X_train_rspl_ss, y_train_rspl_ss)))
+print("Accuracy on test set: {:.3f}".format(mlp_enhanced.score(X_test, y_test)))
 # -
 
 # ### Decision Tree with SMOTE
 
+# +
 from sklearn.tree import DecisionTreeClassifier
 dt = DecisionTreeClassifier(criterion='entropy',random_state=0)
+dt_ss = DecisionTreeClassifier(criterion='entropy',random_state=0)
 dt.fit(X_train_rspl, y_train_rspl)
-print("Accuracy on training set: {:.3f}".format(dt.score(X_train_rspl, y_train_rspl)))
-print("Accuracy on test set: {:.3f}".format(dt.score(X_test, y_test)))
+dt_ss.fit(X_train_rspl_ss, y_train_rspl_ss)
+
+#below is with smote on default sampling strategy
+print("Accuracy on training set for Decision Tree with smote on default sampling strategy: {:.3f}".format(dt.score(X_train_rspl, y_train_rspl)))
+print("Accuracy on test set for Decison Tree with smote on default sampling strategy: {:.3f}".format(dt.score(X_test, y_test)))
+
+#below is with smote on default sampling strategy
+print("Accuracy on training set for Decision Tree with smote on 0.1 sampling strategy: {:.3f}".format(dt_ss.score(X_train_rspl_ss, y_train_rspl_ss)))
+print("Accuracy on test set for Decison Tree with smote on 0.1 sampling strategy: {:.3f}".format(dt_ss.score(X_test, y_test)))
+
+
+# -
 
 y_pred = dt.predict(X_test)
+y_pred_ss = dt_ss.predict(X_test)
 
 # +
+# Confusion Matrix on smote with default sampling strategy
 from sklearn.metrics import classification_report, confusion_matrix  
 
 print(confusion_matrix(y_test, y_pred))  
 print(classification_report(y_test, y_pred)) 
+# +
+# Confusion Matrix on smote with sampling strategy = 0.1
+from sklearn.metrics import classification_report, confusion_matrix  
+
+print(confusion_matrix(y_test, y_pred_ss))  
+print(classification_report(y_test, y_pred_ss)) 
 # -
+
 # ## Logistic Regression with SMOTE and tuned ratio
 
+# this is on smote with default sampling strategy = 1.0
 from sklearn.linear_model import LogisticRegression
 logreg = LogisticRegression(C=0.01).fit(X_train_rspl, y_train_rspl)
 print("Training set score: {:.3f}".format(logreg.score(X_train_rspl, y_train_rspl)))
 print("Test set score: {:.3f}".format(logreg.score(X_test, y_test)))
 
+# this is on smote with sampling strategy = 0.1
+from sklearn.linear_model import LogisticRegression
+logreg_ss = LogisticRegression(C=0.01).fit(X_train_rspl_ss, y_train_rspl_ss)
+print("Training set score: {:.3f}".format(logreg_ss.score(X_train_rspl_ss, y_train_rspl_ss)))
+print("Test set score: {:.3f}".format(logreg_ss.score(X_test, y_test)))
+
 y_pred = logreg.predict(X_test)
 print(confusion_matrix(y_test, y_pred))  
 print(classification_report(y_test, y_pred)) 
 
+y_pred_ss = logreg_ss.predict(X_test)
+print(confusion_matrix(y_test, y_pred_ss))  
+print(classification_report(y_test, y_pred_ss)) 
+
 # +
-# this is to search for the best ratio to be applied to SMOTE for better result
+# this is to search for the best ratio/sampling_strategy to be applied to SMOTE for better result
 from sklearn.model_selection import GridSearchCV
 from imblearn.pipeline import make_pipeline
 from sklearn.linear_model import LogisticRegression
