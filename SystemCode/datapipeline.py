@@ -5,6 +5,8 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from statistics import variance, mean, stdev
 import constants
 import os
+from dask import dataframe as dd
+import dask
 
 class Datapipeline():
     '''
@@ -109,6 +111,7 @@ class Datapipeline():
             'RESID_CTY', 'RESID_POSTALCODE', # convert to latitude longitude
             'PATIENT_SID', 'PATIENT_NUMBER', 'DRG_DESC',
             'PAYER_NAME1_V', 'PAYER_NAME2_V', 'PAYER_NAME3_V', 'PAYER_NAME4_V',
+            'PAYER_CODE1_V', 'PAYER_CODE1_V', 'PAYER_CODE3_V', 'PAYER_CODE4_V',
             'PACKAGE_CODE', 'PACKAGE_DESC', 'PACKAGE_DESC1', 'PACKAGE_DESC2',
             'ICDCODE_STRING', 'DOB']
         self.cols_num_to_object = [
@@ -188,14 +191,21 @@ class Datapipeline():
         return self.hosp_file_paths
 
         
-    def transform_train_data(self, df):
+    def transform_train_test_data(self, data_file_path):
         """
         Get training data from file path and split to features columns and target columns
 
         :param df: training dataframe
         :return: X_train, y_train
         """
-        
+
+        # Extract new file path
+        X_train_file_path = os.path.splitext(data_file_path)[0] + '_X_train.csv'
+        y_train_file_path = os.path.splitext(data_file_path)[0] + '_y_train.csv'
+
+        # Read from csv
+        df = pd.read_csv(data_file_path, dtype=self.col_dtypes)
+
         # set 'id' as index
         df = self._set_index(df)
         
@@ -204,22 +214,42 @@ class Datapipeline():
 
         df = self._process_null(df)
 
+        df_train, df_test = self.train_test_split(df, random_state=0)
+
         # split dataframe into features, X, and target, y
-        X_train, y_train = self._split_to_X_y(df)
-        
-        # fit encode dataframe
-        self._fit_one_hot_encode(X_train)
-        
-        # transform encode dataframe
-        X_train = self._transform_one_hot_encode(X_train)
+        X_train, y_train = self._split_to_X_y(df_train)
+        X_test, y_test = self._split_to_X_y(df_train)
 
         # fit scale dataframe
         self._fit_std_scaler(X_train)
 
         # transform scale dataframe
         X_train = self._transform_std_scaler(X_train)
+        X_test = self._transform_std_scaler(X_test)
+        
+        # fit encode dataframe
+        self._fit_one_hot_encode(X_train)
+        
+        # transform encode dataframe
+        if os.path.exists(X_train_file_path):
+            os.remove(X_train_file_path)
+        slice_size = 10000
+        slice_start = 0
+        while slice_start < len(X_train):
+            slice_end = slice_start + slice_size
+            print(slice_start, slice_end)
+            X_slice = self._transform_one_hot_encode(X_train.iloc[slice_start : slice_end, :])
+            if slice_start == 0:
+                X_slice.to_csv(X_train_file_path)
+            else:
+                X_slice.to_csv(X_train_file_path, mode='a', header=False)
+            slice_start = slice_end
 
-        return X_train, y_train
+        if os.path.exists(y_train_file_path):
+            os.remove(y_train_file_path)
+        y_train.to_csv(y_train_file_path)
+
+        return X_train_file_path, y_train_file_path
     
 
     def transform_test_data(self, df):
@@ -282,7 +312,7 @@ class Datapipeline():
         list_hosp = df[self.hosp_col].unique()
         
         for hosp in list_hosp:
-            dict_hosp_df[hosp] = df[df[self.hosp_col] == hosp]
+            dict_hosp_df[hosp] = df[df[self.hosp_col] == hosp].drop(columns=self.hosp_col)
             
         return dict_hosp_df
     
@@ -417,27 +447,25 @@ class Datapipeline():
         :param df: dataframe to encode categorical features
         :return: encoded dataframe
         """
-        print(1)
+
         columns, ohe = self.one_hot_enc
-        print(2)
         enc_ohe = ohe.transform(df[columns])
-        print(3)
         enc_cols = [f'{columns[i]}_{ohe.categories_[i][j]}'
                     for i in range(len(columns))
                     for j in range(len(ohe.categories_[i]))
                     if (ohe.drop_idx_ is None) or
                        (ohe.drop_idx_[i] is None) or
                        (j != ohe.drop_idx_[i])]
-        print(4)
+
         df_enc = pd.DataFrame(enc_ohe, index=df.index, columns=enc_cols)
-        print(5)
+
         # drop one hot encoded columns
         df.drop(columns, axis=1, inplace=True)
-        print(6)
+
         # merge new columns from onehot encode into dataframe
         #df = pd.concat([df, df_enc], axis=1)
         df = df.join(df_enc)
-        print(7)
+
         return df
 
 
@@ -448,7 +476,7 @@ class Datapipeline():
         :param df: Dataframe to fit scaler
         '''
         self.std_scaler = StandardScaler()
-        self.std_scaler.fit(df)
+        self.std_scaler.fit(df[df.select_dtypes(include=[np.number]).columns])
 
 
     def _transform_std_scaler(self, df):
@@ -458,7 +486,8 @@ class Datapipeline():
         :param df: Datafraame to scale
         :return: scaled dataframe
         '''
-        df = self.std_scaler.transform(df)
+        df[df.select_dtypes(include=[np.number]).columns] = self.std_scaler.transform(
+            df[df.select_dtypes(include=[np.number]).columns])
         return df
 
 
