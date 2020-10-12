@@ -1,17 +1,19 @@
 import pandas as pd
 import numpy as np
 import random
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from statistics import variance, mean, stdev
 import constants
 import os
 from dask import dataframe as dd
 import dask
 
+
 class Datapipeline():
     '''
     Data pipeline class
     '''
+
     def __init__(self):
         '''
         Initialise
@@ -102,24 +104,27 @@ class Datapipeline():
             'WRITE_OFF': np.float64}
         self.cols_to_drop = [
             'PAYER_NAME_1', 'PAYER_NAME_2', 'PAYER_NAME_3', 'PAYER_NAME_4', 'PAYER_NAME_5',
-            'CASE_TYPE', # only 1 value
+            'CASE_TYPE',  # only 1 value
             'DISCHARGE_DTE', 'DISCHARGE_TYPE_DESC', 'ADMISSION_DTE',
             'DOCTOR_NAME', 'SPECIALTY_DESC',
             'TOSP_STRING',
             'TOSP_DESC1', 'TOSP_DESC2', 'TOSP_DESC3', 'TOSP_DESC4',
-            'LANGUAGE', # only 1 value
-            'RESID_CTY', 'RESID_POSTALCODE', # convert to latitude longitude
-            'PATIENT_SID', 'PATIENT_NUMBER', 'DRG_DESC',
+            'LANGUAGE',  # only 1 value
+            'RESID_CTY', 'RESID_POSTALCODE',  # convert to latitude longitude
+            'PATIENT_SID', 'PATIENT_NUMBER',
+            'DRG_DESC', 'DRG_CODE',  # removed because it is concluded after discharge
             'PAYER_NAME1_V', 'PAYER_NAME2_V', 'PAYER_NAME3_V', 'PAYER_NAME4_V',
-            'PAYER_CODE1_V', 'PAYER_CODE1_V', 'PAYER_CODE3_V', 'PAYER_CODE4_V',
+            'PAYER_CODE1_V', 'PAYER_CODE2_V', 'PAYER_CODE3_V', 'PAYER_CODE4_V',
             'PACKAGE_CODE', 'PACKAGE_DESC', 'PACKAGE_DESC1', 'PACKAGE_DESC2',
-            'ICDCODE_STRING', 'DOB']
+            'ICDCODE_STRING', 'DOB',
+            'Resid_Cty_Code']#temporary
         self.cols_num_to_object = [
             'SPECIALTY_CODE', 'SPECIALTY_GRP', 'PACKAGE_CODE', 'PACKAGE_CODE1', 'PACKAGE_CODE2',
             'PAYER_CODE_1', 'PAYER_CODE_2', 'PAYER_CODE_3', 'PAYER_CODE_4', 'PAYER_CODE_5']
         self.bool_cols = ['NONRESID_FLAG', 'DECEASED_FLAG', 'VIP_FLAG']
         self.index_col = 'CASE_NUMBER'
         self.target_col = 'WRITE_OFF'
+        self.target_col_binned = f'bin_{self.target_col}'
         self.hosp_col = 'INSTITUTION'
         self.data_folder_path = './data'
         self.dict_columns_categories = {
@@ -130,33 +135,33 @@ class Datapipeline():
             'PAYER_CODE_5': constants.PAYER_CODES,
             'BED_TYPE': constants.BED_TYPES,
             'REFERRAL_TYPE': constants.REFERRAL_TYPES,
-            'TREATMENT_CATEGORY' : constants.TREATMENT_TYPES,
-            'DOCTOR_CODE' : constants.DOCTOR_CODES,
+            'TREATMENT_CATEGORY': constants.TREATMENT_TYPES,
+            'ADMISSION_TYPE': constants.ADMISSION_TYPES,
+            'DOCTOR_CODE': constants.DOCTOR_CODES,
             'SPECIALTY_CODE': constants.SPECIALTY_CODES,
-            'SPECIALTY_GRP' : constants.SPECIALTY_GROUPS,
+            'SPECIALTY_GRP': constants.SPECIALTY_GROUPS,
             'TOSP_CODE1': constants.TOSP_CODES,
             'TOSP_CODE2': constants.TOSP_CODES,
             'TOSP_CODE3': constants.TOSP_CODES,
             'TOSP_CODE4': constants.TOSP_CODES,
             'NATIONALITY': constants.NATIONALITIES,
             'GENDER': constants.GENDER_TYPES,
-            'MARITAL_STATUS' : constants.MARITAL_STATUSES,
-            'RELIGION' : constants.RELIGION_TYPES,
-            'RACE' : constants.RACE_TYPES,
-            'DRG_CODE' : constants.DRG_CODES,
-            'PACKAGE_CODE1' : constants.PACKAGE_CODES,
+            'MARITAL_STATUS': constants.MARITAL_STATUSES,
+            'RELIGION': constants.RELIGION_TYPES,
+            'RACE': constants.RACE_TYPES,
+            # 'DRG_CODE' : constants.DRG_CODES,
+            'PACKAGE_CODE1': constants.PACKAGE_CODES,
             'PACKAGE_CODE2': constants.PACKAGE_CODES,
-            'ICD_CODE1' : constants.ICD_CODES,
-            'ICD_CODE2' : constants.ICD_CODES,
-            'ICD_CODE3' : constants.ICD_CODES}
-        self.bin_threshold = [0]
+            'ICD_CODE1': constants.ICD_CODES,
+            'ICD_CODE2': constants.ICD_CODES,
+            'ICD_CODE3': constants.ICD_CODES}
+        self.bin_threshold = [0, 100, 1000, 10000]#[0]
         self.drop_agg_cols = []
         self.dict_col_ohe = {}
 
-
     def transform_raw_data(self, raw_data_path):
         """
-        Transform raw data into pre-processed raw data and save into '<hospital>_data.csv'
+        Transform raw data into pre-processed raw data and save into '<hospital>_data.pkl'
 
         :param data_path: Path of data file
         :return: dictionary of file paths of each hospital data
@@ -165,7 +170,7 @@ class Datapipeline():
         # Extract directory
         self.data_folder_path = os.path.dirname(raw_data_path)
 
-        # Read from csv
+        # Read from excel
         df = pd.read_excel(raw_data_path, dtype=self.col_dtypes)
 
         # set 'CASE_NUMBER' as index
@@ -177,42 +182,49 @@ class Datapipeline():
         # scale and encode dataframe
         #df = self.__encode_categorical(df)
 
-        df.to_csv(f'{self.data_folder_path}/all_hosp_data.csv')
+        df.to_pickle(f'{self.data_folder_path}/all_hosp_data.pkl')
 
         # split data by hospital
         dict_hosp_df = self._split_by_hosp(df)
-        
-        #save hospital data into csv
+
+        # save hospital data into pickle
         self.hosp_file_paths = {}
         for hosp, df_hosp in dict_hosp_df.items():
-            self.hosp_file_paths[hosp] = f'{self.data_folder_path}/{hosp}_data.csv'
-            df_hosp.to_csv(self.hosp_file_paths[hosp])
-        
+            self.hosp_file_paths[hosp] = f'{self.data_folder_path}/{hosp}_data.pkl'
+            df_hosp.to_pickle(self.hosp_file_paths[hosp])
+
         return self.hosp_file_paths
 
-        
     def transform_train_test_data(self, data_file_path):
         """
-        Get training data from file path and split to features columns and target columns
+        Get training data from pickle file path and split to features columns and target columns
 
         :param df: training dataframe
         :return: X_train, y_train
         """
 
         # Extract new file path
-        X_train_file_path = os.path.splitext(data_file_path)[0] + '_X_train.csv'
-        y_train_file_path = os.path.splitext(data_file_path)[0] + '_y_train.csv'
+        data_dir = os.path.splitext(data_file_path)[0]
+        X_train_file_path = data_dir + '_X_train.pkl'
+        y_train_file_path = data_dir + '_y_train.pkl'
+        X_test_file_path = data_dir + '_X_test.pkl'
+        y_test_file_path = data_dir + '_y_test.pkl'
 
-        # Read from csv
-        df = pd.read_csv(data_file_path, dtype=self.col_dtypes)
+        # Read from pickle or csv
+        if data_file_path.endswith('.pkl'):
+            df = pd.read_pickle(data_file_path)
+        else:
+            df = pd.read_csv(data_file_path, dtype=self.col_dtypes)
 
-        # set 'id' as index
-        df = self._set_index(df)
-        
-        # convert features from numeric to object as they should be categorical features
-        df = self.convert_numeric_to_object(df)
+            # set 'id' as index
+            df = self._set_index(df)
 
-        df = self._process_null(df)
+            # convert features from numeric to object as they should be categorical features
+            df = self.convert_numeric_to_object(df)
+
+            df = self._convert_bool_col(df)
+
+            df = self._process_null(df)
 
         df_train, df_test = self.train_test_split(df, random_state=0)
 
@@ -226,31 +238,76 @@ class Datapipeline():
         # transform scale dataframe
         X_train = self._transform_std_scaler(X_train)
         X_test = self._transform_std_scaler(X_test)
-        
+
+        # fit label encode dataframe target column
+        #self._fit_label_encoder(y_train)
+
+        # transform label encode dataframe target column
+        #y_train = self._transform_label_encoder(y_train)
+        #y_test = self._transform_label_encoder(y_test)
+
         # fit encode dataframe
         self._fit_one_hot_encode(X_train)
-        
+
         # transform encode dataframe
-        if os.path.exists(X_train_file_path):
-            os.remove(X_train_file_path)
+        check_dir = os.path.dirname(data_file_path)
+        for file in os.listdir(check_dir):
+            file_path = os.path.join(check_dir, file)
+            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find('_X_train') >= 0):
+                os.remove(file_path)
+        #store = pd.HDFStore(X_train_file_path)
         slice_size = 10000
         slice_start = 0
+        idx = 0
+        X_train_file_paths = []
         while slice_start < len(X_train):
+            X_train_file_path = data_dir + f'_X_train_{idx}.pkl'
             slice_end = slice_start + slice_size
-            print(slice_start, slice_end)
-            X_slice = self._transform_one_hot_encode(X_train.iloc[slice_start : slice_end, :])
+            print(f'Processing train X rows: {slice_start} ~ {slice_end}')
+            X_slice = self._transform_one_hot_encode(
+                X_train.iloc[slice_start: slice_end, :])
             if slice_start == 0:
-                X_slice.to_csv(X_train_file_path)
+                X_slice.to_pickle(X_train_file_path)
+                #store.append('X_train', X_slice)
             else:
-                X_slice.to_csv(X_train_file_path, mode='a', header=False)
+                X_slice.to_pickle(X_train_file_path)
+                #store.append('X_train', X_slice)
+            X_train_file_paths.append(X_train_file_path)
             slice_start = slice_end
+            idx += 1
 
         if os.path.exists(y_train_file_path):
             os.remove(y_train_file_path)
-        y_train.to_csv(y_train_file_path)
+        y_train.to_pickle(y_train_file_path)
 
-        return X_train_file_path, y_train_file_path
-    
+        for file in os.listdir(check_dir):
+            file_path = os.path.join(check_dir, file)
+            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find('_X_test') >= 0):
+                os.remove(file_path)
+        slice_start = 0
+        idx = 0
+        X_test_file_paths = []
+        while slice_start < len(X_test):
+            X_test_file_path = data_dir + f'_X_test_{idx}.pkl'
+            slice_end = slice_start + slice_size
+            print(f'Processing test X rows: {slice_start} ~ {slice_end}')
+            X_slice = self._transform_one_hot_encode(
+                X_test.iloc[slice_start: slice_end, :])
+            if slice_start == 0:
+                X_slice.to_pickle(X_test_file_path)
+                #store.append('X_test', X_slice)
+            else:
+                X_slice.to_pickle(X_test_file_path)
+                #store.append('X_test', X_slice)
+            X_test_file_paths.append(X_test_file_path)
+            slice_start = slice_end
+            idx += 1
+
+        if os.path.exists(y_test_file_path):
+            os.remove(y_test_file_path)
+        y_test.to_pickle(y_test_file_path)
+
+        return X_train_file_paths, y_train_file_path, X_test_file_paths, y_test_file_path
 
     def transform_test_data(self, df):
         """
@@ -285,11 +342,10 @@ class Datapipeline():
 
         return X_test, y_test
 
-
     def _set_index(self, df):
         '''
         Set index columns and drop duplicate indexes
-        
+
         :param df: dataframe to set index
         :return: processed dataframe
         '''
@@ -298,57 +354,55 @@ class Datapipeline():
             df.set_index(self.index_col, verify_integrity=False,
                          drop=True, inplace=True)  # drop duplicates
         return df
-    
-    
+
     def _split_by_hosp(self, df):
         '''
         Split data by hospital
-        
+
         :param df: dataframe to split
         :return: dictionary of hospital to dataframe corresponding to hospital
         '''
         dict_hosp_df = {}
-        
+
         list_hosp = df[self.hosp_col].unique()
-        
+
         for hosp in list_hosp:
-            dict_hosp_df[hosp] = df[df[self.hosp_col] == hosp].drop(columns=self.hosp_col)
-            
+            dict_hosp_df[hosp] = df[df[self.hosp_col]
+                                    == hosp].drop(columns=self.hosp_col)
+
         return dict_hosp_df
-    
-    
+
     def _agg_admit_age(self, df):
         '''
         Aggregate admission age from ADMISSION_DTE and DOB
-        
+
         :param df: dataframe to aggregate admission age feature from
         :return: dataframe that contains the admission age
         '''
         df['Admission_Age'] = df['ADMISSION_DTE'].dt.year-df['DOB'].dt.year
         self.drop_agg_cols.append(['Admission_Age', 'DOB'])
         return df
-    
 
     def convert_numeric_to_object(self, df, features=None):
         '''
         Convert features in dataframe into object type
-        
+
         :param df: dataframe to process
         :return: processed dataframe
         '''
         if features is None:
             features = self.cols_num_to_object[:]
 
-        dict_features = {feature: 'object' for feature in features if feature in df.columns}
+        dict_features = {
+            feature: 'object' for feature in features if feature in df.columns}
         df = df.astype(dict_features)
 
         return df
-    
-    
+
     def _split_to_X_y(self, df, col_target=None, col_features=None):
         '''
         Split dataframe into features and target
-        
+
         :param df: dataframe to split features and target from
         :param col_target: name of column to use as target
         :param col_features: list of columns to use in features, default is None which use all
@@ -357,50 +411,55 @@ class Datapipeline():
         '''
 
         if col_target is None:
-            col_target = self.target_col
-            
+            col_target = self.target_col_binned
+        
+            if col_target not in df.columns:
+                col_target = self.target_col
+
         if col_features is None:
             X = df.drop(col_target, axis=1)
         else:
             X = df[col_features]
-            
+
         y = df[col_target]
-        
+
         return X, y
-    
-    
+
     def _preprocess_raw_data(self, df):
         """
         Preprocess raw dataframe
-        
+
         :param df: raw dataframe to preprocess
         :return: preprocessed dataframe
         """
 
         # convert features from numeric to object as they should be categorical features
         df = self.convert_numeric_to_object(df)
-        
+
+        df = self._convert_bool_col(df)
+
         # convert country names to country codes
         df['RESID_CTY'] = df['RESID_CTY'].fillna('').astype('object')
         dict_country_code = {
             k.lower(): v for k, v in constants.COUNTRY_CODES.items()}
         df['Resid_Cty_Code'] = [dict_country_code[row['RESID_CTY'].lower()]
                                 if (row['RESID_CTY'].lower() != '') and
-                                    (row['RESID_CTY'].lower() != 'unknown')
+                                (row['RESID_CTY'].lower() != 'unknown')
                                 else ''
                                 for index, row in df.iterrows()]
-        
+
         # Aggregate features
         df = self._agg_admit_age(df)
-        
+
         # drop columns
         df.drop(columns=self.cols_to_drop, inplace=True)
 
         # process null of NaN values
         df = self._process_null(df)
 
+        #df = self.bin_column(df, col=self.target_col, bin_thresh=self.bin_threshold)
+
         return df
-    
 
     def _process_null(self, df):
         '''
@@ -412,16 +471,21 @@ class Datapipeline():
         cols_obj = df.select_dtypes(include=np.object).columns
         cols_num = df.select_dtypes(include=np.number).columns
 
-        df[cols_obj] = df[cols_obj].fillna('').replace(' ', '').astype('object')
+        df[cols_obj] = df[cols_obj].fillna(
+            '').replace(' ', '').astype('object')
         df[cols_num] = df[cols_num].fillna(0)
 
         return df
 
+    def _convert_bool_col(self, df):
+        for col in self.bool_cols:
+            df[col] = df[col].replace({'N': '0', 'Y': '1'}).astype(int)
+        return df
 
     def _fit_one_hot_encode(self, df):
         """
         One hot encode categorical features fit
-        
+
         :param df: dataframe to encode categorical features
         :param dict_col_cat: dictionary of col and corresponding list of categories
         """
@@ -429,7 +493,7 @@ class Datapipeline():
         if self.dict_columns_categories is not None:
             columns = []
             categories = []
-            
+
             for column in self.dict_columns_categories:
                 columns.append(column)
                 categories.append(self.dict_columns_categories[column][:])
@@ -439,11 +503,10 @@ class Datapipeline():
             ohe.fit(df[columns])
             self.one_hot_enc = (columns, ohe)
 
-
     def _transform_one_hot_encode(self, df):
         """
         One hot encode categorical features transform
-        
+
         :param df: dataframe to encode categorical features
         :return: encoded dataframe
         """
@@ -468,7 +531,6 @@ class Datapipeline():
 
         return df
 
-
     def _fit_std_scaler(self, df):
         '''
         Standard scaler fit
@@ -477,7 +539,6 @@ class Datapipeline():
         '''
         self.std_scaler = StandardScaler()
         self.std_scaler.fit(df[df.select_dtypes(include=[np.number]).columns])
-
 
     def _transform_std_scaler(self, df):
         '''
@@ -490,6 +551,31 @@ class Datapipeline():
             df[df.select_dtypes(include=[np.number]).columns])
         return df
 
+    def _fit_label_encoder(self, df):
+        '''
+        label encoder fit target column
+
+        :param df: Dataframe to fit encoder
+        '''
+        
+        self.ord_enc = OrdinalEncoder()
+        self.ord_enc.fit(df)
+
+    def _transform_label_encoder(self, df):
+        '''
+        label encoder transform target column
+
+        :param df: Dataframe to transform 
+        :return: transformed dataframe
+        '''
+        col = self.target_col_binned
+        if col not in df.columns:
+            col = self.target_col
+        if col in df.columns:
+            df = self.ord_enc.transform(df)
+            return df.drop(columns=col)
+        else:
+            return df
 
     def bin_column(self, df, col=None, bin_thresh=[0]):
         '''
@@ -513,16 +599,16 @@ class Datapipeline():
             bin_intervals.insert(0, np.NINF)
             bin_intervals.append(np.Inf)
 
-            df[f'bin_{col}'] = pd.cut(df[col], bin_intervals)
-            df.drop(columns=col, inplace=True)
-
-        return df
-
+            df1 = df.copy()
+            df1[self.target_col_binned] = pd.cut(df1[col], bin_intervals).astype('object')
+            return df1.drop(columns=col)
+        else:
+            return df
 
     def train_test_split(self, df, test_frac=0.25, random_state=None):
         """
         Split dataset into training set and test set
-        
+
         :param df: dataframe to split
         :param test_frac: fraction of dataset for test set
         :param random_state: random state for random seed
@@ -531,7 +617,7 @@ class Datapipeline():
 
         # set random seed
         np.random.seed(random_state)
-        
+
         # check test size fraction is within range
         if test_frac is None:
             test_frac = 0.25
@@ -539,25 +625,25 @@ class Datapipeline():
             test_frac = 1
         elif test_frac < 0:
             test_frac = 0
-            
+
         # get indices of dataframe
         indices = df.index.tolist()
 
         # get train and test indices
         train_size = int(round((1 - test_frac) * len(indices)))
         if train_size > 0:
-            train_indices = np.random.choice(indices, size=train_size, replace=False)
+            train_indices = np.random.choice(
+                indices, size=train_size, replace=False)
         else:
             train_indices = []
-            
+
         # return train dataframe and test dataframe
         return df[df.index.isin(train_indices)], df[~df.index.isin(train_indices)]
-
 
     def sample_data(self, df, sample_frac=0.1, n_searches=1000):
         '''
         Extract a sample that best represent the data
-        
+
         :param sample_frac: fraction of the dataset to sample, default = 0.1
         :param n_searches: number of random sampling to search for the best sample, default = 1000
         :return: sample dataframe

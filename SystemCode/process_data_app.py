@@ -3,6 +3,7 @@ from datapipeline import Datapipeline
 import pandas as pd
 import os
 
+
 def process_data(data_path):
     dpl = Datapipeline()
     print('transform_raw_data')
@@ -13,6 +14,7 @@ def process_data(data_path):
 
         df_train, df_test = dpl.train_test_split(df, random_state=0)
         X_train, y_train = dpl.transform_train_data(df_train)
+
 
 def get_argparser():
     parser = argparse.ArgumentParser()
@@ -38,6 +40,7 @@ def get_params(args):
             del dict_args['data_path']
 
     return data_path
+
 
 if __name__ == '__main__':
     parser = get_argparser()
