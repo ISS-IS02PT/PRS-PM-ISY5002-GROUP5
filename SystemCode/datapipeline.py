@@ -253,7 +253,8 @@ class Datapipeline():
         check_dir = os.path.dirname(data_file_path)
         for file in os.listdir(check_dir):
             file_path = os.path.join(check_dir, file)
-            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find('_X_train') >= 0):
+            basename = os.path.basename(data_dir)
+            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find(f'{basename}_X_train') >= 0):
                 os.remove(file_path)
         #store = pd.HDFStore(X_train_file_path)
         slice_size = 10000
@@ -282,7 +283,8 @@ class Datapipeline():
 
         for file in os.listdir(check_dir):
             file_path = os.path.join(check_dir, file)
-            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find('_X_test') >= 0):
+            basename = os.path.basename(data_dir)
+            if os.path.isfile(file_path) and file.endswith('.pkl') and (file.find(f'{basename}_X_test') >= 0):
                 os.remove(file_path)
         slice_start = 0
         idx = 0
