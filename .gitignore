@@ -132,3 +132,4 @@ dmypy.json
 # Data folder
 data/
 
+.hdf5
