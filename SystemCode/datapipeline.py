@@ -5,9 +5,9 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from statistics import variance, mean, stdev
 import constants
 import os
-from dask import dataframe as dd
-import dask
-
+#from dask import dataframe as dd
+#import dask
+import pickle
 
 class Datapipeline():
     '''
@@ -230,12 +230,14 @@ class Datapipeline():
 
         # split dataframe into features, X, and target, y
         X_train, y_train = self._split_to_X_y(df_train)
-        X_test, y_test = self._split_to_X_y(df_train)
+        X_test, y_test = self._split_to_X_y(df_test)
 
         # fit scale dataframe
         self._fit_std_scaler(X_train)
+        pickle.dump(self.std_scaler, open(data_dir + '_scaler.pkl', 'wb'))
 
         # transform scale dataframe
+        self.std_scaler = pickle.load(open(data_dir + '_scaler.pkl', 'rb'))
         X_train = self._transform_std_scaler(X_train)
         X_test = self._transform_std_scaler(X_test)
 
@@ -266,7 +268,7 @@ class Datapipeline():
             slice_end = slice_start + slice_size
             print(f'Processing train X rows: {slice_start} ~ {slice_end}')
             X_slice = self._transform_one_hot_encode(
-                X_train.iloc[slice_start: slice_end, :])
+                X_train.iloc[slice_start: slice_end, :].copy())
             if slice_start == 0:
                 X_slice.to_pickle(X_train_file_path)
                 #store.append('X_train', X_slice)
@@ -294,7 +296,7 @@ class Datapipeline():
             slice_end = slice_start + slice_size
             print(f'Processing test X rows: {slice_start} ~ {slice_end}')
             X_slice = self._transform_one_hot_encode(
-                X_test.iloc[slice_start: slice_end, :])
+                X_test.iloc[slice_start: slice_end, :].copy())
             if slice_start == 0:
                 X_slice.to_pickle(X_test_file_path)
                 #store.append('X_test', X_slice)
@@ -311,38 +313,27 @@ class Datapipeline():
 
         return X_train_file_paths, y_train_file_path, X_test_file_paths, y_test_file_path
 
-    def transform_test_data(self, df):
+    def transform_test_data(self, df_X_test, scaler_pkl_file_path, columns=None):
         """
         Get test data from file path and split to features columns and target column
 
-        :param df: test dataframe
-        :return: X_test, y_test
+        :param df_X_test: test dataframe features only
+        :param scaler_pkl_file_path: scaler pickle file
+        :param columns: feature columns to use after one hot encode
+        :return: X_test
         """
 
-        # set 'id' as index
-        df = self._set_index(df)
-
-        # convert features from numeric to object as they should be categorical features
-        df = self.convert_numeric_to_object(df)
-
-        df = self._process_null(df)
-
-        # split dataframe into features, X, and target, y
-        X_test, y_test = self._split_to_X_y(df)
-
-        # fit encode dataframe
-        self._fit_one_hot_encode(X_test)
+        # transform scale dataframe
+        self.std_scaler = pickle.load(open(scaler_pkl_file_path, 'rb'))
+        X_test = self._transform_std_scaler(df_X_test)
 
         # transform encode dataframe
-        X_test = self._transform_one_hot_encode(X_test)
+        X_slice = self._transform_one_hot_encode(X_test)
 
-        # fit scale dataframe
-        self._fit_std_scaler(X_test)
-
-        # transform scale dataframe
-        X_test = self._transform_std_scaler(X_test)
-
-        return X_test, y_test
+        if columns is not None:
+            return X_slice.loc[:, columns]
+        else:
+            return X_slice
 
     def _set_index(self, df):
         '''
