@@ -132,4 +132,7 @@ dmypy.json
 # Data folder
 data/
 
-.hdf5
+*.hdf5
+*.pkl
+*.sav
+*.h5
