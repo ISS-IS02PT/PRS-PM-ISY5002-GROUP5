@@ -313,7 +313,7 @@ class Datapipeline():
 
         return X_train_file_paths, y_train_file_path, X_test_file_paths, y_test_file_path
 
-    def transform_test_data(self, df_X_test, scaler_pkl_file_path, columns=None):
+    def transform_test_data(self, df_X_test, scaler_pkl_file_path, feature_importance_file_path):
         """
         Get test data from file path and split to features columns and target column
 
@@ -330,10 +330,8 @@ class Datapipeline():
         # transform encode dataframe
         X_slice = self._transform_one_hot_encode(X_test)
 
-        if columns is not None:
-            return X_slice.loc[:, columns]
-        else:
-            return X_slice
+        feature_importances = np.load(feature_importance_file_path)
+        return X_slice.loc[:, feature_importances > 0.0]
 
     def _set_index(self, df):
         '''
