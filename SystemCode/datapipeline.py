@@ -250,8 +250,10 @@ class Datapipeline():
 
         # fit encode dataframe
         self._fit_one_hot_encode(X_train)
+        pickle.dump(self.one_hot_enc, open(data_dir + '_ohe.pkl', 'wb'))
 
         # transform encode dataframe
+        self.one_hot_enc = pickle.load(open(data_dir + '_ohe.pkl', 'rb'))
         check_dir = os.path.dirname(data_file_path)
         for file in os.listdir(check_dir):
             file_path = os.path.join(check_dir, file)
@@ -313,12 +315,13 @@ class Datapipeline():
 
         return X_train_file_paths, y_train_file_path, X_test_file_paths, y_test_file_path
 
-    def transform_test_data(self, df_X_test, scaler_pkl_file_path, feature_importance_file_path):
+    def transform_test_data(self, df_X_test, scaler_pkl_file_path, ohe_pkl_file_path, feature_importance_file_path):
         """
         Get test data from file path and split to features columns and target column
 
         :param df_X_test: test dataframe features only
         :param scaler_pkl_file_path: scaler pickle file
+        :param ohe_pkl_file_path: one hot encoder pickle file
         :param columns: feature columns to use after one hot encode
         :return: X_test
         """
@@ -328,10 +331,11 @@ class Datapipeline():
         X_test = self._transform_std_scaler(df_X_test)
 
         # transform encode dataframe
+        self.one_hot_enc = pickle.load(open(ohe_pkl_file_path, 'rb'))
         X_slice = self._transform_one_hot_encode(X_test)
 
         feature_importances = np.load(feature_importance_file_path)
-        return X_slice.loc[:, feature_importances > 0.0]
+        return X_slice.loc[:, feature_importances > 0]
 
     def _set_index(self, df):
         '''
