@@ -154,6 +154,46 @@ class Datapipeline():
 
         return self.hosp_file_paths
 
+    def transform_raw_test_data(self, df_raw, split_hosp=False):
+        """
+        Transform raw data into pre-processed raw data and save into '<hospital>_data_uc3.pkl'
+
+        :param df: dataframe of test data
+        :return: processed dataframe
+        """
+
+        df = df_raw.copy()
+
+        df = df.astype(self.col_dtypes)
+ 
+        for col in self.col_dte:
+            df[col] = pd.to_datetime(df[col])
+        
+        # set 'ACTUAL_CASE_NUMBER' as index
+        df = self._set_index(df)
+
+        # preprocess dataframe
+        df = self._preprocess_raw_data(df)
+
+        # scale and encode dataframe
+        #df = self.__encode_categorical(df)
+
+        #df.to_pickle(f'{self.data_folder_path}/all_hosp_data_uc3.pkl')
+
+        # split data by hospital
+        if split_hosp:
+            dict_hosp_df = self._split_by_hosp(df)
+
+        # save hospital data into pickle
+        #self.hosp_file_paths = {}
+        #for hosp, df_hosp in dict_hosp_df.items():
+            #self.hosp_file_paths[hosp] = f'{self.data_folder_path}/{hosp}_data_uc3.pkl'
+            #df_hosp.to_pickle(self.hosp_file_paths[hosp])
+
+            return dict_hosp_df
+        else:
+            return df
+
     def transform_train_test_data(self, data_file_path):
         """
         Get training data from pickle file path and split to features columns and target columns
@@ -378,8 +418,8 @@ class Datapipeline():
                                 else ''
                                 for index, row in df.iterrows()]
 
-        df['ETBS_ICU_HDU_LOS'] = df['ETBS_ICU_HDU_LOS'].str.replace('MISSING', '0').fillna('0').astype(np.float64)
-        df['ETBS_LOS'] = df['ETBS_LOS'].str.replace('MISSING', '0').fillna('0').astype(np.float64)
+        df['ETBS_ICU_HDU_LOS'] = df['ETBS_ICU_HDU_LOS'].astype(str).str.replace('MISSING', '0').fillna('0').astype(np.float64)
+        df['ETBS_LOS'] = df['ETBS_LOS'].astype(str).str.replace('MISSING', '0').fillna('0').astype(np.float64)
         # Aggregate features
         df = self._agg_admit_age(df)
 
