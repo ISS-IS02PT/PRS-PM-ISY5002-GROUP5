@@ -159,7 +159,7 @@ class Datapipeline():
         self.drop_agg_cols = []
         self.dict_col_ohe = {}
 
-    def transform_raw_data(self, raw_data_path):
+    def transform_raw_data(self, raw_data_path, split_hosp=True):
         """
         Transform raw data into pre-processed raw data and save into '<hospital>_data.pkl'
 
@@ -172,6 +172,7 @@ class Datapipeline():
 
         # Read from excel
         df = pd.read_excel(raw_data_path, dtype=self.col_dtypes)
+        df = df[self.col_dtypes]
 
         # set 'CASE_NUMBER' as index
         df = self._set_index(df)
@@ -182,7 +183,8 @@ class Datapipeline():
         # scale and encode dataframe
         #df = self.__encode_categorical(df)
 
-        df.to_pickle(f'{self.data_folder_path}/all_hosp_data.pkl')
+        self.all_hosp_file_path = f'{self.data_folder_path}/all_hosp_data.pkl'
+        df.to_pickle(self.all_hosp_file_path)
 
         # split data by hospital
         dict_hosp_df = self._split_by_hosp(df)
@@ -193,7 +195,10 @@ class Datapipeline():
             self.hosp_file_paths[hosp] = f'{self.data_folder_path}/{hosp}_data.pkl'
             df_hosp.to_pickle(self.hosp_file_paths[hosp])
 
-        return self.hosp_file_paths
+        if split_hosp:
+            return self.hosp_file_paths
+        else:
+            return self.all_hosp_file_path
 
     def transform_train_test_data(self, data_file_path):
         """

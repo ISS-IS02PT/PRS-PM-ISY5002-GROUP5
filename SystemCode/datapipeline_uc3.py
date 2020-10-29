@@ -118,7 +118,7 @@ class Datapipeline():
         self.drop_agg_cols = []
         self.dict_col_ohe = {}
 
-    def transform_raw_data(self, raw_data_path):
+    def transform_raw_data(self, raw_data_path, split_hosp=True):
         """
         Transform raw data into pre-processed raw data and save into '<hospital>_data_uc3.pkl'
 
@@ -141,7 +141,8 @@ class Datapipeline():
         # scale and encode dataframe
         #df = self.__encode_categorical(df)
 
-        df.to_pickle(f'{self.data_folder_path}/all_hosp_data_uc3.pkl')
+        self.all_hosp_file_path = f'{self.data_folder_path}/all_hosp_data_uc3.pkl'
+        df.to_pickle(self.all_hosp_file_path)
 
         # split data by hospital
         dict_hosp_df = self._split_by_hosp(df)
@@ -152,7 +153,10 @@ class Datapipeline():
             self.hosp_file_paths[hosp] = f'{self.data_folder_path}/{hosp}_data_uc3.pkl'
             df_hosp.to_pickle(self.hosp_file_paths[hosp])
 
-        return self.hosp_file_paths
+        if split_hosp:
+            return self.hosp_file_paths
+        else:
+            return self.all_hosp_file_path
 
     def transform_raw_test_data(self, df_raw, split_hosp=False):
         """
