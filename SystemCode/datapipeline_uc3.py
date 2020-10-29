@@ -118,7 +118,7 @@ class Datapipeline():
         self.drop_agg_cols = []
         self.dict_col_ohe = {}
 
-    def transform_raw_data(self, raw_data_path, split_hosp=True):
+    def transform_raw_data(self, raw_data_path, split_hosp=False):
         """
         Transform raw data into pre-processed raw data and save into '<hospital>_data_uc3.pkl'
 
@@ -470,8 +470,9 @@ class Datapipeline():
             categories = []
 
             for column in self.dict_columns_categories:
-                columns.append(column)
-                categories.append(self.dict_columns_categories[column][:])
+                if column in df.columns:
+                    columns.append(column)
+                    categories.append(self.dict_columns_categories[column][:])
 
             ohe = OneHotEncoder(categories=categories, drop=None, sparse=False,
                                 handle_unknown='ignore')

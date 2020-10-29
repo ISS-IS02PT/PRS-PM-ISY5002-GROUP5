@@ -128,6 +128,7 @@ class Datapipeline():
         self.hosp_col = 'INSTITUTION'
         self.data_folder_path = './data'
         self.dict_columns_categories = {
+            'INSTITUTION': constants.INSTITUTION_TYPES,
             'PAYER_CODE_1': constants.PAYER_CODES,
             'PAYER_CODE_2': constants.PAYER_CODES,
             'PAYER_CODE_3': constants.PAYER_CODES,
@@ -532,8 +533,9 @@ class Datapipeline():
             categories = []
 
             for column in self.dict_columns_categories:
-                columns.append(column)
-                categories.append(self.dict_columns_categories[column][:])
+                if column in df.columns:
+                    columns.append(column)
+                    categories.append(self.dict_columns_categories[column][:])
 
             ohe = OneHotEncoder(categories=categories, drop=None, sparse=False,
                                 handle_unknown='ignore')
