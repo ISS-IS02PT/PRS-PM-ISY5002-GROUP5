@@ -22,15 +22,15 @@ import matplotlib.pyplot as plt
 #from matplotlib import pyplot
 
 # Load the CSV file
-CSV_FILE = 'ID_HospRevenue_2017_2019_ByWeek.csv'
+CSV_FILE = 'SG_HospRevenue_2017_2019_ByWeek.csv'
 series = pd.read_csv(CSV_FILE, parse_dates=True, index_col=0)
 print(series.head())
 
 # Plot the time series data
-series.plot(figsize=(15, 8), marker='x', title='Indonesia Resident Patient Weekly Revenue Number')
+series.plot(figsize=(15, 8), marker='x', title='Singapore Resident Patient Weekly Revenue Number')
 plt.xlabel('DATE')
 plt.ylabel('REVENUE')
-pltt.show()
+plt.show()
 
 # Autocorrelation
 #pd.plotting.autocorrelation_plot(series)
@@ -44,13 +44,13 @@ ax.set_xlabel('Lag (weeks)')
 plt.show()
 # from the picture below we choose the first 6 lags
 
-# ## Start of ARIMA model
+# ## Start of Arima Model
 
 # +
 # ARIMA Model
 from statsmodels.tsa.arima_model import ARIMA
 
-model = ARIMA(series, order=(6,0,0))
+model = ARIMA(series, order=(2,0,0))
 model_fit = model.fit(disp=0)
 print(model_fit.summary())
 # -
@@ -113,23 +113,13 @@ def forecast_accuracy(forecast, actual):
     mpe = np.mean((forecast - actual)/actual)   # MPE
     mse = np.mean((forecast - actual)**2)  # MSE
     rmse = np.mean((forecast - actual)**2)**.5  # RMSE
-    #corr = np.corrcoef(forecast, actual)[0,1]   # corr
-    #mins = np.amin(np.hstack([forecast[:,None], 
-    #                          actual[:,None]]), axis=1)
-    #maxs = np.amax(np.hstack([forecast[:,None], 
-    #                          actual[:,None]]), axis=1)
-    #minmax = 1 - np.mean(mins/maxs)             # minmax
-    #acf1 = acf(fc-test)[1]                      # ACF1
-    #return({'mape':mape, 'me':me, 'mae': mae, 
-    #        'mpe': mpe, 'rmse':rmse, 'acf1':acf1, 
-    #        'corr':corr, 'minmax':minmax})
     return({'mape':mape, 'me':me, 'mae': mae, 
             'mpe': mpe, 'mse':mse, 'rmse':rmse})
 
 forecast_accuracy(predictions, test)
 # -
 
-# ## End of ARIMA Model
+# ## End of ARIMA model
 
 # ## Start of Neural Net Model
 
@@ -155,18 +145,21 @@ import pickle
 
 plt.style.use('seaborn-whitegrid')
 
+print("Tensorflow version: ", tf.__version__)
+print(tf.test.gpu_device_name())
+
 # + [markdown] colab_type="text" id="vBTeSSrs54T6"
 # Update `CSV_FILE` to use the correct .csv filename. Some zip files contain multiple datasets.
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 224} colab_type="code" id="rJ9_sDXa3Clm" outputId="e0de6543-6792-4394-87be-0a1532ec5beb"
 # Note: update CSV_FILE to the .csv filename from above
-CSV_FILE = 'ID_HospRevenue_2017_2019_ByWeek.csv'
+CSV_FILE = 'SG_HospRevenue_2017_2019_ByWeek.csv'
 
 df = pd.read_csv(CSV_FILE, parse_dates=True, index_col=0)
 df.head()
 
 # + [markdown] colab_type="text" id="WAV-3NXu6D4q"
-# # Data Exploration
+# ### Data Exploration
 #
 # 1. Plot the dataset
 # 2. Compute the min, max, etc
@@ -189,10 +182,10 @@ ax.set_xlabel('Lag (weeks)')
 plt.show()
 
 # + colab={} colab_type="code" id="AEhS04ocCZ21"
-window_size = 6 # largest number of lags above the 95% confidence band
+window_size = 2 # largest number of lags above the 95% confidence band
 
 # + [markdown] colab_type="text" id="tZMZoF3n6bE4"
-# ## Windowing
+# ### Windowing
 #
 # 1. Create shifted windows of the dataset.
 # 2. Use this to setup our inputs and target.
@@ -242,15 +235,15 @@ df_windowed.columns
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 34} colab_type="code" id="whMf2snyHH0C" outputId="53615cfd-fd6c-435e-b0ad-d616004c60b2"
 # the target we want to predict (lowercase y is a convention for a vector)
-y = df_windowed['t+6']
+y = df_windowed['t+2']
 
 # the input data (uppercase X is a convention for a matrix)
-X = df_windowed.drop(columns=['t+6'])
+X = df_windowed.drop(columns=['t+2'])
 
 X.shape, y.shape
 
 # + [markdown] colab_type="text" id="q8Zy8Ez36nlj"
-# ## Neural Network
+# ### Neural Network
 #
 # 1. Create a neural network using Tensorflow-Keras
 # 2. Split the dataset into training and test sets
@@ -265,14 +258,7 @@ X.shape, y.shape
 from tensorflow.keras import layers
 
 model = tf.keras.Sequential()
-#model.add(layers.Dense(32, input_shape=(3,), activation='relu'))
-model.add(layers.Dense(32, input_shape=(6,), activation='relu'))
-model.add(layers.Dropout(0.25))
-model.add(layers.Dense(32, activation='relu'))
-#model.add(layers.Dropout(0.25))
-model.add(layers.Dense(32, activation='relu'))
-#model.add(layers.Dense(32, activation='relu'))
-#model.add(layers.Dense(32, activation='relu'))
+model.add(layers.Dense(16, input_shape=(2,), activation='relu'))
 model.add(layers.Dense(1))
 model.summary()
 
@@ -322,7 +308,7 @@ plt.legend()
 plt.show()
 
 # + colab={} colab_type="code" id="6IvVquwzKqQD"
-model.save('model_id_revenue_prediction.h5')
+model.save('model_sg_revenue_prediction.h5')
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 429} colab_type="code" id="2t24z4WzOSG2" outputId="0282cce6-ef89-417d-8de6-19a40c62a74d"
 # Get a prediction from our model for our data and plot it against the truth
@@ -344,7 +330,7 @@ plt.show()
 
 # + colab={} colab_type="code" id="9e_PkhlujHRe"
 full_id_with_y_and_pred = pd.concat([X,y,df_pred],axis=1)
-full_id_with_y_and_pred.to_csv('full_id_revenue_with_y_and_pred.csv')
+full_id_with_y_and_pred.to_csv('full_sg_revenue_with_y_and_pred.csv')
 
 # +
 # Get a prediction from our model for our data and plot it against the truth

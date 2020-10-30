@@ -22,12 +22,12 @@ import matplotlib.pyplot as plt
 #from matplotlib import pyplot
 
 # Load the CSV file
-CSV_FILE = 'SG_HospRevenue_2017_2019_ByWeek.csv'
+CSV_FILE = 'ID_HospRevenue_2017_2019_ByWeek.csv'
 series = pd.read_csv(CSV_FILE, parse_dates=True, index_col=0)
 print(series.head())
 
 # Plot the time series data
-series.plot(figsize=(15, 8), marker='x', title='Singapore Resident Patient Weekly Revenue Number')
+series.plot(figsize=(15, 8), marker='x', title='Indonesia Resident Patient Weekly Revenue Number')
 plt.xlabel('DATE')
 plt.ylabel('REVENUE')
 plt.show()
@@ -44,13 +44,13 @@ ax.set_xlabel('Lag (weeks)')
 plt.show()
 # from the picture below we choose the first 6 lags
 
-# ## Start of Arima Model
+# ## Start of ARIMA model
 
 # +
 # ARIMA Model
 from statsmodels.tsa.arima_model import ARIMA
 
-model = ARIMA(series, order=(2,0,0))
+model = ARIMA(series, order=(6,0,0))
 model_fit = model.fit(disp=0)
 print(model_fit.summary())
 # -
@@ -127,9 +127,120 @@ def forecast_accuracy(forecast, actual):
             'mpe': mpe, 'mse':mse, 'rmse':rmse})
 
 forecast_accuracy(predictions, test)
+
+# +
+# This is to sync the data points with the Neural Net, need to delete some data points in ARIMA
+# in Neural Net for Indonesia Model, the first 3 data points are not used, so to sync the comparison with neural net model,
+# we have to create another variable test_sync_nn and predictions_sync_nn to standardize the data points
+#print(test)
+test_sync_nn = test[4:]
+predictions_sync_nn = predictions_sync_nn = predictions[4:]
+
+fig, ax = plt.subplots(figsize=(15, 8))
+ax.plot(test_sync_nn, label='Truth', marker='o')
+ax.plot(predictions_sync_nn, label='Arima Predictions', marker='x')
+ax.legend()
+plt.show()
 # -
 
-# ## End of ARIMA model
+forecast_accuracy(predictions_sync_nn, test_sync_nn)
+
+# ## End of ARIMA Model
+
+# ## Start of LSTM Model
+
+# Load the CSV file
+CSV_FILE = 'ID_HospRevenue_2017_2019_ByWeek.csv'
+series = pd.read_csv(CSV_FILE, parse_dates=True, index_col=0)
+print(series.head())
+
+print(type(series))
+
+# +
+# Univariate data preparation
+from numpy import array
+
+#split a univariate sequence into samples
+def split_sequence(sequence, n_steps):
+    X,y = list(), list()
+    for i in range(len(sequence)):
+        #find the end of this pattern
+        end_ix = i + n_steps
+        #check if we are beyond the sequence
+        if end_ix > len(sequence)-1:
+            break
+        #gather input and output parts of the pattern
+        seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
+        X.append(seq_x)
+        y.append(seq_y)
+    return array(X), array(y)
+
+#Define input sequence
+row_seq = series.iloc[:,0].values
+
+#Choose the time steps
+n_steps = 6
+
+# Split into samples
+X, y = split_sequence(row_seq, n_steps)
+
+# Reshape from [samples, timesteps] into [samples, timesteps, features]
+n_features = 1
+
+# Summarize the data
+for i in range(len(X)):
+    print(X[i], y[i])
+    
+X = X.reshape((X.shape[0], X.shape[1], n_features))
+
+print (X)
+
+# +
+from keras.models import Sequential
+from keras.layers import LSTM
+from keras.layers import Dense
+
+# Vanilla LSTM
+model = Sequential()
+#model.add(LSTM(200,activation='relu', input_shape=(n_steps, n_features)))
+model.add(LSTM(200,activation='relu', return_sequences=True, input_shape=(n_steps, n_features)))
+model.add(LSTM(200,activation='relu'))
+model.add(Dense(1))
+model.compile(optimizer='adam', loss='mse')
+# -
+
+# Fit model
+model.fit(X, y, epochs = 500, verbose = 0)
+
+
+x_input = X
+#x_input = x_input.reshape((1,n_steps,n_features))
+yhat = model.predict(x_input, verbose=0)
+print(yhat)
+
+
+# +
+def forecast_accuracy(forecast, actual):
+    mape = np.mean(np.abs(forecast - actual)/np.abs(actual))  # MAPE
+    me = np.mean(forecast - actual)             # ME
+    mae = np.mean(np.abs(forecast - actual))    # MAE
+    mpe = np.mean((forecast - actual)/actual)   # MPE
+    mse = np.mean((forecast - actual)**2)  # MSE
+    rmse = np.mean((forecast - actual)**2)**.5  # RMSE
+    mmape = np.mean(np.abs(forecast - actual)/np.abs(forecast))  # MMAPE
+    return({'mape':mape, 'mmape':mmape,'me':me, 'mae': mae, 
+            'mpe': mpe, 'mse':mse, 'rmse':rmse})
+
+forecast_accuracy(yhat,y)
+# -
+
+fig, ax = plt.subplots(figsize=(15, 8))
+ax.plot(y, label='Truth', marker='o')
+ax.plot(yhat, label='LSTM Predictions', marker='x')
+ax.legend()
+plt.show()
+
+# ## End of LSTM Model
 
 # ## Start of Neural Net Model
 
@@ -155,21 +266,18 @@ import pickle
 
 plt.style.use('seaborn-whitegrid')
 
-print("Tensorflow version: ", tf.__version__)
-print(tf.test.gpu_device_name())
-
 # + [markdown] colab_type="text" id="vBTeSSrs54T6"
 # Update `CSV_FILE` to use the correct .csv filename. Some zip files contain multiple datasets.
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 224} colab_type="code" id="rJ9_sDXa3Clm" outputId="e0de6543-6792-4394-87be-0a1532ec5beb"
 # Note: update CSV_FILE to the .csv filename from above
-CSV_FILE = 'SG_HospRevenue_2017_2019_ByWeek.csv'
+CSV_FILE = 'ID_HospRevenue_2017_2019_ByWeek.csv'
 
 df = pd.read_csv(CSV_FILE, parse_dates=True, index_col=0)
 df.head()
 
 # + [markdown] colab_type="text" id="WAV-3NXu6D4q"
-# ### Data Exploration
+# # Data Exploration
 #
 # 1. Plot the dataset
 # 2. Compute the min, max, etc
@@ -192,10 +300,10 @@ ax.set_xlabel('Lag (weeks)')
 plt.show()
 
 # + colab={} colab_type="code" id="AEhS04ocCZ21"
-window_size = 2 # largest number of lags above the 95% confidence band
+window_size = 6 # largest number of lags above the 95% confidence band
 
 # + [markdown] colab_type="text" id="tZMZoF3n6bE4"
-# ### Windowing
+# ## Windowing
 #
 # 1. Create shifted windows of the dataset.
 # 2. Use this to setup our inputs and target.
@@ -245,15 +353,15 @@ df_windowed.columns
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 34} colab_type="code" id="whMf2snyHH0C" outputId="53615cfd-fd6c-435e-b0ad-d616004c60b2"
 # the target we want to predict (lowercase y is a convention for a vector)
-y = df_windowed['t+2']
+y = df_windowed['t+6']
 
 # the input data (uppercase X is a convention for a matrix)
-X = df_windowed.drop(columns=['t+2'])
+X = df_windowed.drop(columns=['t+6'])
 
 X.shape, y.shape
 
 # + [markdown] colab_type="text" id="q8Zy8Ez36nlj"
-# ### Neural Network
+# ## Neural Network
 #
 # 1. Create a neural network using Tensorflow-Keras
 # 2. Split the dataset into training and test sets
@@ -268,7 +376,10 @@ X.shape, y.shape
 from tensorflow.keras import layers
 
 model = tf.keras.Sequential()
-model.add(layers.Dense(16, input_shape=(2,), activation='relu'))
+model.add(layers.Dense(32, input_shape=(6,), activation='relu'))
+model.add(layers.Dropout(0.25))
+model.add(layers.Dense(32, activation='relu'))
+model.add(layers.Dense(32, activation='relu'))
 model.add(layers.Dense(1))
 model.summary()
 
@@ -318,7 +429,7 @@ plt.legend()
 plt.show()
 
 # + colab={} colab_type="code" id="6IvVquwzKqQD"
-model.save('model_sg_revenue_prediction.h5')
+model.save('model_id_revenue_prediction.h5')
 
 # + colab={"base_uri": "https://localhost:8080/", "height": 429} colab_type="code" id="2t24z4WzOSG2" outputId="0282cce6-ef89-417d-8de6-19a40c62a74d"
 # Get a prediction from our model for our data and plot it against the truth
@@ -340,7 +451,7 @@ plt.show()
 
 # + colab={} colab_type="code" id="9e_PkhlujHRe"
 full_id_with_y_and_pred = pd.concat([X,y,df_pred],axis=1)
-full_id_with_y_and_pred.to_csv('full_sg_revenue_with_y_and_pred.csv')
+full_id_with_y_and_pred.to_csv('full_id_revenue_with_y_and_pred.csv')
 
 # +
 # Get a prediction from our model for our data and plot it against the truth
@@ -368,3 +479,8 @@ forecast_accuracy(df_pred_test["predictions"].to_numpy(), y_test)
 # 'mpe': 0.1954761148314077,
 # 'mse': 946360530436.5908,
 # 'rmse': 972810.6344179173}
+# -
+
+print(y_test)
+
+
