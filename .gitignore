@@ -136,3 +136,5 @@ data/
 *.pkl
 *.sav
 *.h5
+
+/from_cloud/
