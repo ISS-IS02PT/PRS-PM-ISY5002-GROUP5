@@ -35,7 +35,14 @@ Use case #3 is driven by the business need that In Singapore all inpatient cases
 `<Folder Link>` : <https://github.com/ISS-IS02PT/PRS-PM-ISY5002-GROUP5/tree/master/Video>
 
 ---
-## SECTION 5 : PROJECT REPORT / PAPER
+## SECTION 5 : MID-PROJECT PRESENTATION
+`Please refer to Mid-Project Presentation at Github Folder: Mid-Project Presentation`
+
+`<File Link>` : <https://github.com/ISS-IS02PT/PRS-PM-ISY5002-GROUP5/tree/master/Mid-Project-Presentation>
+
+
+---
+## SECTION 6 : PROJECT REPORT / PAPER
 `Please refer to Project report at Github Folder: ProjectReport`
 
 `<File Link>` : <https://github.com/ISS-IS02PT/PRS-PM-ISY5002-GROUP5/tree/master/ProjectReport>
