@@ -137,4 +137,4 @@ data/
 *.sav
 *.h5
 
-./from_cloud/
+*.pkl_gstmp
